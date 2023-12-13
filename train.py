@@ -33,7 +33,6 @@ if __name__ == '__main__':
     steps = len(train_loader) // accumulate
 
     model = torch.compile(LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device))
-    # testLLM(model)
 
     params = [p for p in model.parameters() if p.requires_grad]
     optim_groups = [
