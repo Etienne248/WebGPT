@@ -89,6 +89,7 @@ class MultiHeadSelfAttention(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
+        #                                   (B,T,n_head,C_head)          (B,n_head,T,C_head)              (B,T,n_head,C_head * 3)
         q, k, v = map(lambda x: x.view(B, T, self.n_head, C // self.n_head).transpose(1, 2), torch.chunk(self.qkv(x), 3, dim=-1))
         x = F.scaled_dot_product_attention(q, k, v, is_causal=self.is_causal)
         x = x.transpose(1, 2).contiguous().view(B, T, C)
