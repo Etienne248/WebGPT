@@ -82,7 +82,7 @@ class RMSNorm(torch.nn.Module):
         return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, n_head: int, embed_dim: int, is_causal:bool = True) -> None:
+    def __init__(self, n_head: int, embed_dim: int, is_causal:bool = True, dropout : float = 0.0) -> None:
         super().__init__()
         self.is_causal = is_causal
         self.n_head = n_head
@@ -90,6 +90,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.proj = nn.Linear(embed_dim, embed_dim, bias=False)
 
         self.RoPE = RotaryPositionalEmbeddings(embed_dim // n_head)
+        self.dropout = dropout
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
@@ -99,26 +100,28 @@ class MultiHeadSelfAttention(nn.Module):
         q = self.RoPE(q)
         k = self.RoPE(k)
 
-        x = F.scaled_dot_product_attention(q, k, v, is_causal=self.is_causal)
+        x = F.scaled_dot_product_attention(q, k, v, is_causal=self.is_causal, dropout_p=self.dropout if self.training else 0)
         x = x.transpose(1, 2).contiguous().view(B, T, C)
+        x = F.dropout(x, self.dropout, self.training)
         return self.proj(x)
     
 class FeedForward(nn.Module):
-    def __init__(self, embed_dim: int) -> None:
+    def __init__(self, embed_dim: int, dropout : float = 0.0) -> None:
         super().__init__()
         h_dim = 4 * embed_dim
         self.l1 = nn.Linear(embed_dim, h_dim, bias=False)
         self.l2 = nn.Linear(h_dim, embed_dim, bias=False)
         self.l3 = nn.Linear(embed_dim, h_dim, bias=False)
+        self.drop = nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.l2(F.silu(self.l1(x)) * self.l3(x))
+        return self.drop(self.l2(F.silu(self.l1(x)) * self.l3(x)))
     
 class Block(nn.Module):
-    def __init__(self, n_head: int, embed_dim: int) -> None:
+    def __init__(self, n_head: int, embed_dim: int, dropout : float = 0.0) -> None:
         super().__init__()
-        self.mhsa = nn.Sequential(RMSNorm(embed_dim), MultiHeadSelfAttention(n_head, embed_dim))
-        self.ffwd = nn.Sequential(RMSNorm(embed_dim), FeedForward(embed_dim))
+        self.mhsa = nn.Sequential(RMSNorm(embed_dim), MultiHeadSelfAttention(n_head, embed_dim, dropout=dropout))
+        self.ffwd = nn.Sequential(RMSNorm(embed_dim), FeedForward(embed_dim, dropout))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.mhsa(x)
@@ -126,12 +129,13 @@ class Block(nn.Module):
         return x
 
 class LLM(nn.Module):
-    def __init__(self, vocab: Vocab, context_length: int, embed_dim: int, n_head: int, n_layer: int) -> None:
+    def __init__(self, vocab: Vocab, context_length: int, embed_dim: int, n_head: int, n_layer: int, dropout : float = 0.0) -> None:
         super().__init__()
         self.context_length = context_length
         self.token_emb = nn.Embedding(len(vocab), embed_dim)
         #self.pos_emb = nn.Embedding(context_length, embed_dim)
-        self.blocks = nn.Sequential(*[Block(n_head, embed_dim) for _ in range(n_layer)])
+        self.drop = nn.Dropout(dropout)
+        self.blocks = nn.Sequential(*[Block(n_head, embed_dim, dropout) for _ in range(n_layer)])
         self.rmsn = RMSNorm(embed_dim)
         self.lm_head = nn.Linear(embed_dim, len(vocab))
 
@@ -151,8 +155,9 @@ class LLM(nn.Module):
 
     def forward(self, idx: torch.Tensor) -> torch.Tensor:
         B, T = idx.shape
-        t = torch.arange(0, T, dtype=torch.long, device=idx.device).unsqueeze(0)
+        # t = torch.arange(0, T, dtype=torch.long, device=idx.device).unsqueeze(0)
         x = self.token_emb(idx) #+ self.pos_emb(t)
+        x = self.drop(x)
         x = self.blocks(x)
         x = self.lm_head(self.rmsn(x))
         return x

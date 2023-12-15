@@ -22,6 +22,9 @@ if __name__ == '__main__':
     accumulate = 256 // batch_size
     lr = 3e-4
     weight_decay = 1e-1
+    dropout = 0.1
+
+    file_bn = "harry_potter"
 
     books = HarryPotter('harry_potter.txt')
     vocab = Vocab()
@@ -34,7 +37,7 @@ if __name__ == '__main__':
 
     steps = len(train_loader) // accumulate
 
-    model=LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device)
+    model=LLM(vocab, context_length, embed_dim, n_head, n_layer, dropout).to(device)
     model_compile = torch.compile(model)
 
     params = [p for p in model_compile.parameters() if p.requires_grad]
@@ -66,10 +69,13 @@ if __name__ == '__main__':
     plt.title("Training Loss over Time")
     plt.xlabel("step")
     plt.ylabel("nll")
+
     i = 1
-    while os.path.exists(f"harry_potter{i}.png"):
+    while os.path.exists(f"{file_bn}{i}.png"):
         i += 1
-    plt.savefig(f"harry_potter{i}.png")
+    file_bni = f"{file_bn}{i}"
+    
+    plt.savefig(f"{file_bni}.png")
 
     nll = model_compile.evaluate_loss(val_loader, device)
     print(f"---------------------")
@@ -78,7 +84,12 @@ if __name__ == '__main__':
 
     device = torch.device('cpu')
     model_compile = model_compile.to(device)
-    i = 1
-    while os.path.exists(f"harry_potter{i}.pt"):
-        i += 1
-    torch.save(model_compile.state_dict(), f"harry_potter{i}.pt")
+
+    torch.save(model_compile.state_dict(), f"{file_bni}.pt")
+
+    import inspect
+    with open("logs.txt", "a") as file:
+        file.write(f"model_file:{os.path.basename(inspect.getfile(LLM))}, train_nll:{nlls[-1]}, eval_nll:{nll}\n")
+
+    
+    
