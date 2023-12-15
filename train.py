@@ -1,4 +1,4 @@
-from model import *
+from modelRoPE import *
 
 if __name__ == '__main__':
 
@@ -6,6 +6,8 @@ if __name__ == '__main__':
     from torch.optim.lr_scheduler import OneCycleLR
 
     import matplotlib.pyplot as plt
+
+    import os
 
     device = torch.device('cuda')
     torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=True, enable_mem_efficient=True)
@@ -32,9 +34,10 @@ if __name__ == '__main__':
 
     steps = len(train_loader) // accumulate
 
-    model = torch.compile(LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device))
+    model=LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device)
+    model_compile = torch.compile(model)
 
-    params = [p for p in model.parameters() if p.requires_grad]
+    params = [p for p in model_compile.parameters() if p.requires_grad]
     optim_groups = [
         {'params': [p for p in params if p.dim() >= 2], 'weight_decay': weight_decay},
         {'params': [p for p in params if p.dim() <  2], 'weight_decay': 0.0}
@@ -52,24 +55,30 @@ if __name__ == '__main__':
     print(f"Accumulate     {f'{accumulate:,}':>12}")
     print(f"Context Length {f'{context_length:,}':>12}")
     print(f"---------------------------")
-    print(f"Parameters     {f'{model.num_parameters:,}':>12}")
-    print(f"Buffers        {f'{model.num_buffers:,}':>12}")
-    print(f"Footprint      {f'{(model.num_parameters + model.num_buffers) * 32 * 1.25e-10:.2f} GB':>12}")
+    print(f"Parameters     {f'{model_compile.num_parameters:,}':>12}")
+    print(f"Buffers        {f'{model_compile.num_buffers:,}':>12}")
+    print(f"Footprint      {f'{(model_compile.num_parameters + model_compile.num_buffers) * 32 * 1.25e-10:.2f} GB':>12}")
     print(f"---------------------------")
 
-    nlls = model.fit(train_loader, optimizer, scheduler, steps, accumulate, device)
+    nlls = model_compile.fit(train_loader, optimizer, scheduler, steps, accumulate, device)
     plt.figure(figsize=(8, 4))
     plt.plot(nlls)
     plt.title("Training Loss over Time")
     plt.xlabel("step")
     plt.ylabel("nll")
-    plt.savefig("harry_potter.png")
+    i = 1
+    while os.path.exists(f"harry_potter{i}.png"):
+        i += 1
+    plt.savefig(f"harry_potter{i}.png")
 
-    nll = model.evaluate_loss(val_loader, device)
+    nll = model_compile.evaluate_loss(val_loader, device)
     print(f"---------------------")
     print(f"Validation NLL {f'{nll:.2f}':>6}")
     print(f"---------------------")
 
     device = torch.device('cpu')
-    model = model.to(device)
-    torch.save(model.state_dict(), 'harry_potter.pt')
+    model_compile = model_compile.to(device)
+    i = 1
+    while os.path.exists(f"harry_potter{i}.pt"):
+        i += 1
+    torch.save(model_compile.state_dict(), f"harry_potter{i}.pt")

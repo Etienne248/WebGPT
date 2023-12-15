@@ -64,8 +64,10 @@ class RotaryPositionalEmbeddings(nn.Module):
         idx_theta2 = torch.cat([idx_theta, idx_theta], dim=1)
 
         # Cache them
-        self.cos_cached = idx_theta2.cos()[None, None, :, :]
-        self.sin_cached = idx_theta2.sin()[None, None, :, :]
+        self.cos_cached = idx_theta2.cos()#[None, None, :, :]
+        self.sin_cached = idx_theta2.sin()#[None, None, :, :]
+
+        # print(f"cach made for {seq_len}")
 
     def _neg_half(self, x: torch.Tensor):
         # $\frac{d}{2}$
@@ -147,8 +149,17 @@ def _test_rotary():
     plt.grid(True)
     plt.show()
     
-    
+def _test_rotary2():
+    x = torch.tensor([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=torch.float).to(device)
+    print(x)
+
+    rot_dim = 4
+    rotary_pe = RotaryPositionalEmbeddings(rot_dim)
+    print(rotary_pe(x))
+    x = torch.tensor([[1, 2, 3, 4]], dtype=torch.float).to(device)
+    print(rotary_pe(x))
 
 
 if __name__ == '__main__':
-    _test_rotary()
+    device = torch.device("cuda")
+    _test_rotary2()
