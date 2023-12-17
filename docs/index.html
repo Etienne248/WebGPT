@@ -8,8 +8,8 @@
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
   </head>
   <body class="my-6 mx-auto prose bg-zinc-100 text-zinc-950">
-    <h1>🧙 Potter More</h1>
-    <h2>🪄 Make J.K.Rowling write more</h2>
+    <h1>Shakespeare More</h1>
+    <h2>🪄 Make Shakespeare write more</h2>
     <div class="mb-4 flex gap-2">
       <button id="write" class="bg-zinc-950 text-zinc-100 px-4 py-1 rounded-md hover:text-zinc-400">Start Writing</button>
     </div>
@@ -65,7 +65,7 @@
         ort.env.wasm.simd = true
         const opt = { executionProviders: ["wasm"], graphOptimizationLevel: "all" }
         const session = await ort.InferenceSession.create('../shakespeare.8bit.onnx', opt)
-        const ctx = "It was already Christmas and Harry was missing his wand."
+        const ctx = "Whiles thou art waking"
         const ctxSize = 32
         const temperature = 1.0
         const topK = Math.min(512, 50_257)
