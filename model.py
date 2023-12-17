@@ -15,6 +15,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# from RoPE import RotaryPositionalEmbeddings
+
 
 class HarryPotter:
     base = "https://raw.githubusercontent.com/neelk07/neelkothari/master/blog/static/data/text"
@@ -87,10 +89,16 @@ class MultiHeadSelfAttention(nn.Module):
         self.qkv = nn.Linear(embed_dim, 3 * embed_dim, bias=False)
         self.proj = nn.Linear(embed_dim, embed_dim, bias=False)
 
+        # self.RoPE = RotaryPositionalEmbeddings(embed_dim // n_head)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, T, C = x.shape
         #                                   (B,T,n_head,C_head)          (B,n_head,T,C_head)              (B,T,n_head,C_head * 3)
         q, k, v = map(lambda x: x.view(B, T, self.n_head, C // self.n_head).transpose(1, 2), torch.chunk(self.qkv(x), 3, dim=-1))
+
+        # q = self.RoPE(q)
+        # k = self.RoPE(k)
+
         x = F.scaled_dot_product_attention(q, k, v, is_causal=self.is_causal)
         x = x.transpose(1, 2).contiguous().view(B, T, C)
         return self.proj(x)
@@ -236,7 +244,7 @@ if __name__ == '__main__':
     vocab = Vocab()
 
 
-    model = torch.compile(LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device))
+    model = LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device)
     
     print(len(vocab))
     x=torch.randint(0,len(vocab),(batch_size, context_length), dtype=torch.long, device=device)

@@ -207,6 +207,7 @@ class LLM(nn.Module):
         the sequence max_new_tokens times, feeding the predictions back into the model each time.
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
+        self.eval()
         for _ in range(max_new_tokens):
             # if the sequence context is growing too long we must crop it at block_size
             idx_cond = idx if idx.size(1) <= self.context_length else idx[:, -self.context_length:]
@@ -247,12 +248,12 @@ if __name__ == '__main__':
     vocab = Vocab()
 
 
-    model_compile = LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device)
+    model = LLM(vocab, context_length, embed_dim, n_head, n_layer).to(device)
     
     print(len(vocab))
     x=torch.randint(0,len(vocab),(batch_size, context_length), dtype=torch.long, device=device)
     print(x)
-    print(model_compile(x))
+    print(model(x))
     
     from torchinfo import summary
     summary(LLM(vocab, context_length, embed_dim, n_head, n_layer), input_size=(accumulate, context_length), 
