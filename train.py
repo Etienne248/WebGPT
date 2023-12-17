@@ -24,13 +24,13 @@ if __name__ == '__main__':
     weight_decay = 1e-1
     dropout = 0.1
 
-    file_bn = "harry_potter"
+    file_bn = "shakespeare"
 
-    books = HarryPotter('harry_potter.txt')
+    books = Books('shakespeare.txt')
     vocab = Vocab()
     
-    train_set = HarryPotterDataset(context_length, books, vocab, train=True)
-    val_set = HarryPotterDataset(context_length, books, vocab, train=False)
+    train_set = BooksDataset(context_length, books, vocab, train=True)
+    val_set = BooksDataset(context_length, books, vocab, train=False)
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, pin_memory=True, num_workers=8)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True, num_workers=8)
@@ -83,9 +83,9 @@ if __name__ == '__main__':
     print(f"---------------------")
 
     device = torch.device('cpu')
-    model_compile = model_compile.to(device)
+    model = model.to(device)
 
-    torch.save(model_compile.state_dict(), f"{file_bni}.pt")
+    torch.save(model.state_dict(), f"{file_bni}.pt")
 
     import inspect
     with open("logs.txt", "a") as file:
