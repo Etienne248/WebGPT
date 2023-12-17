@@ -64,7 +64,7 @@
         ort.env.wasm.numThread = 4
         ort.env.wasm.simd = true
         const opt = { executionProviders: ["wasm"], graphOptimizationLevel: "all" }
-        const session = await ort.InferenceSession.create('../shakespeare.8bit.onnx', opt)
+        const session = await ort.InferenceSession.create('./shakespeare.8bit.onnx', opt)
         const ctx = "Whiles thou art waking"
         const ctxSize = 32
         const temperature = 1.0
